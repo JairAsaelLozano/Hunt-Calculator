@@ -1,26 +1,65 @@
 @import "tailwindcss";
 
+/* Colores base para modo claro y oscuro */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --background: #f7f8fa;
+  --foreground: #1e1e1e;
+  --card-bg: #ffffff;
+  --accent: #2563eb;
+  --border: #e5e7eb;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #121212;
+    --foreground: #e5e5e5;
+    --card-bg: #1e1e1e;
+    --accent: #3b82f6;
+    --border: #2a2a2a;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Estilo para tarjetas (resultados, historial) */
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  padding: 1rem;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Estilo ticket */
+.ticket {
+  font-family: 'Roboto Mono', monospace;
+  border-left: 4px dashed var(--accent);
+  padding-left: 1rem;
+}
+
+/* Botón moderno */
+.btn {
+  background-color: var(--accent);
+  color: white;
+  font-weight: 500;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  transition: background-color 0.2s ease-in-out;
+}
+.btn:hover {
+  background-color: #1d4ed8;
+}
+
+/* Botón secundario */
+.btn-secondary {
+  background-color: var(--border);
+  color: var(--foreground);
+}
+.btn-secondary:hover {
+  background-color: #d1d5db;
 }
