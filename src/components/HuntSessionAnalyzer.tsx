@@ -228,8 +228,8 @@ const HuntSessionAnalyzer: React.FC = () => {
           : "Split";
 
       return {
-        startDate: earliestStart ? earliestStart.toISOString().replace('T', ', ').split('.')[0] : parsedBlocks[0].startDate,
-        endDate: latestEnd ? latestEnd.toISOString().replace('T', ', ').split('.')[0] : parsedBlocks[parsedBlocks.length - 1].endDate,
+        startDate: earliestStart ? (earliestStart as Date).toISOString().replace('T', ', ').split('.')[0] : parsedBlocks[0].startDate,
+        endDate: latestEnd ? (latestEnd as Date).toISOString().replace('T', ', ').split('.')[0] : parsedBlocks[parsedBlocks.length - 1].endDate,
         duration: durationStr,
         lootType,
         totalLoot,
@@ -404,13 +404,8 @@ const HuntSessionAnalyzer: React.FC = () => {
         : "Split";
 
     const aggregated: SessionData = {
-      startDate: earliestStart
-        ? new Date(earliestStart).toISOString().replace("T", ", ").split(".")[0]
-        : sessions[0].startDate,
-
-      endDate: latestEnd
-        ? new Date(latestEnd).toISOString().replace("T", ", ").split(".")[0]
-        : sessions[sessions.length - 1].endDate,
+      startDate: earliestStart ? (earliestStart as Date).toISOString().replace("T", ", ").split(".")[0] : sessions[0].startDate,
+      endDate: latestEnd ? (latestEnd as Date).toISOString().replace("T", ", ").split(".")[0] : sessions[sessions.length - 1].endDate,
       duration: durationStr,
       lootType,
       totalLoot,
@@ -471,19 +466,21 @@ const HuntSessionAnalyzer: React.FC = () => {
                 <div className="flex bg-gray-700 rounded-lg p-1">
                   <button
                     onClick={() => setActiveTab("new")}
-                    className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${activeTab === "new"
+                    className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                      activeTab === "new"
                         ? "bg-purple-600 text-white"
                         : "text-gray-300 hover:text-white"
-                      }`}
+                    }`}
                   >
                     New session
                   </button>
                   <button
                     onClick={() => setActiveTab("history")}
-                    className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${activeTab === "history"
+                    className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                      activeTab === "history"
                         ? "bg-purple-600 text-white"
                         : "text-gray-300 hover:text-white"
-                      }`}
+                    }`}
                   >
                     History ({savedSessions.length})
                   </button>
@@ -674,7 +671,7 @@ const HuntSessionAnalyzer: React.FC = () => {
                               <span className="font-bold">
                                 {formatNumber(
                                   parsedSession.totalLoot -
-                                  parsedSession.totalSupplies
+                                    parsedSession.totalSupplies
                                 )}{" "}
                                 total
                               </span>
@@ -683,7 +680,7 @@ const HuntSessionAnalyzer: React.FC = () => {
                                 {formatNumber(
                                   (parsedSession.totalLoot -
                                     parsedSession.totalSupplies) /
-                                  parsedSession.players.length
+                                    parsedSession.players.length
                                 )}{" "}
                                 per player)
                               </span>
@@ -760,10 +757,11 @@ const HuntSessionAnalyzer: React.FC = () => {
                                   {formatNumber(player.supplies)}
                                 </td>
                                 <td
-                                  className={`text-right py-2 ${player.balance >= 0
+                                  className={`text-right py-2 ${
+                                    player.balance >= 0
                                       ? "text-green-400"
                                       : "text-red-400"
-                                    }`}
+                                  }`}
                                 >
                                   {formatNumber(player.balance)}
                                 </td>
@@ -798,7 +796,7 @@ const HuntSessionAnalyzer: React.FC = () => {
                             {formatNumber(
                               Math.round(
                                 parsedSession.totalBalance /
-                                parsedSession.players.length
+                                  parsedSession.players.length
                               )
                             )}
                           </span>
