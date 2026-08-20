@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   Copy,
   Save,
@@ -45,117 +45,200 @@ const HuntSessionAnalyzer: React.FC = () => {
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [activeTab, setActiveTab] = useState<"new" | "history">("new");
   const [savedSessions, setSavedSessions] = useState<SessionData[]>([]);
+  const [addedSessions, setAddedSessions] = useState<SessionData[]>([]);
+  const [selectedAddedIndex, setSelectedAddedIndex] = useState<number | null>(null);
 
   const parseSessionData = useCallback((text: string): SessionData | null => {
-    try {
-      const lines = text
-        .trim()
-        .split("\n")
-        .map((line) => line.trim());
+    const parseSingle = (block: string): SessionData | null => {
+      try {
+        const lines = block
+          .trim()
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
 
-      // Parse session info
-      const sessionLine = lines.find((line) =>
-        line.startsWith("Session data:")
-      );
-      if (!sessionLine) throw new Error("Session data line not found");
+        const sessionLine = lines.find((line) =>
+          line.startsWith("Session data:")
+        );
+        if (!sessionLine) throw new Error("Session data line not found");
 
-      const dateMatch = sessionLine.match(
-        /From (\d{4}-\d{2}-\d{2}, \d{2}:\d{2}:\d{2}) to (\d{4}-\d{2}-\d{2}, \d{2}:\d{2}:\d{2})/
-      );
-      if (!dateMatch) throw new Error("Date format not recognized");
+        const dateMatch = sessionLine.match(
+          /From (\d{4}-\d{2}-\d{2}, \d{2}:\d{2}:\d{2}) to (\d{4}-\d{2}-\d{2}, \d{2}:\d{2}:\d{2})/
+        );
+        if (!dateMatch) throw new Error("Date format not recognized");
 
-      const durationLine = lines.find((line) => line.startsWith("Session:"));
-      const duration = durationLine?.split(":")[1]?.trim() || "00:00h";
+        const durationLine = lines.find((line) => line.startsWith("Session:"));
+        const duration = durationLine?.split(":")[1]?.trim() || "00:00h";
 
-      const lootTypeLine = lines.find((line) => line.startsWith("Loot Type:"));
-      const lootType = (lootTypeLine?.split(":")[1]?.trim() || "Leader") as
-        | "Leader"
-        | "Market"
-        | "Split";
+        const lootTypeLine = lines.find((line) => line.startsWith("Loot Type:"));
+        const lootType = (lootTypeLine?.split(":")[1]?.trim() || "Leader") as
+          | "Leader"
+          | "Market"
+          | "Split";
 
-      const totalLootLine = lines.find((line) => line.startsWith("Loot:"));
-      const totalLoot = parseInt(
-        totalLootLine?.split(":")[1]?.trim().replace(/,/g, "") || "0"
-      );
+        const totalLootLine = lines.find((line) => line.startsWith("Loot:"));
+        const totalLoot = parseInt(
+          totalLootLine?.split(":")[1]?.trim().replace(/,/g, "") || "0"
+        );
 
-      const totalSuppliesLine = lines.find((line) =>
-        line.startsWith("Supplies:")
-      );
-      const totalSupplies = parseInt(
-        totalSuppliesLine?.split(":")[1]?.trim().replace(/,/g, "") || "0"
-      );
+        const totalSuppliesLine = lines.find((line) =>
+          line.startsWith("Supplies:")
+        );
+        const totalSupplies = parseInt(
+          totalSuppliesLine?.split(":")[1]?.trim().replace(/,/g, "") || "0"
+        );
 
-      const balanceLine = lines.find((line) => line.startsWith("Balance:"));
-      const totalBalance = parseInt(
-        balanceLine?.split(":")[1]?.trim().replace(/,/g, "") || "0"
-      );
+        const balanceLine = lines.find((line) => line.startsWith("Balance:"));
+        const totalBalance = parseInt(
+          balanceLine?.split(":")[1]?.trim().replace(/,/g, "") || "0"
+        );
 
-      // Parse players
-      const players: PlayerData[] = [];
-      let currentPlayer: Partial<PlayerData> = {};
+        const players: PlayerData[] = [];
+        let currentPlayer: Partial<PlayerData> = {};
 
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
 
-        if (
-          line &&
-          !line.includes(":") &&
-          !line.startsWith("Session") &&
-          !line.startsWith("Loot") &&
-          !line.startsWith("Supplies") &&
-          !line.startsWith("Balance")
-        ) {
-          if (currentPlayer.name) {
-            players.push(currentPlayer as PlayerData);
+          if (
+            line &&
+            !line.includes(":") &&
+            !line.startsWith("Session") &&
+            !line.startsWith("Loot") &&
+            !line.startsWith("Supplies") &&
+            !line.startsWith("Balance")
+          ) {
+            if (currentPlayer.name) {
+              players.push(currentPlayer as PlayerData);
+            }
+            currentPlayer = {
+              name: line.replace("(Leader)", "").trim(),
+              isLeader: line.includes("(Leader)"),
+              loot: 0,
+              supplies: 0,
+              balance: 0,
+              damage: 0,
+              healing: 0,
+            };
+          } else if (line.includes("Loot:") && currentPlayer.name) {
+            currentPlayer.loot = parseInt(
+              line.split(":")[1].trim().replace(/,/g, "")
+            );
+          } else if (line.includes("Supplies:") && currentPlayer.name) {
+            currentPlayer.supplies = parseInt(
+              line.split(":")[1].trim().replace(/,/g, "")
+            );
+          } else if (line.includes("Balance:") && currentPlayer.name) {
+            currentPlayer.balance = parseInt(
+              line.split(":")[1].trim().replace(/,/g, "")
+            );
+          } else if (line.includes("Damage:") && currentPlayer.name) {
+            currentPlayer.damage = parseInt(
+              line.split(":")[1].trim().replace(/,/g, "")
+            );
+          } else if (line.includes("Healing:") && currentPlayer.name) {
+            currentPlayer.healing = parseInt(
+              line.split(":")[1].trim().replace(/,/g, "")
+            );
           }
-          currentPlayer = {
-            name: line.replace("(Leader)", "").trim(),
-            isLeader: line.includes("(Leader)"),
-            loot: 0,
-            supplies: 0,
-            balance: 0,
-            damage: 0,
-            healing: 0,
-          };
-        } else if (line.includes("Loot:") && currentPlayer.name) {
-          currentPlayer.loot = parseInt(
-            line.split(":")[1].trim().replace(/,/g, "")
-          );
-        } else if (line.includes("Supplies:") && currentPlayer.name) {
-          currentPlayer.supplies = parseInt(
-            line.split(":")[1].trim().replace(/,/g, "")
-          );
-        } else if (line.includes("Balance:") && currentPlayer.name) {
-          currentPlayer.balance = parseInt(
-            line.split(":")[1].trim().replace(/,/g, "")
-          );
-        } else if (line.includes("Damage:") && currentPlayer.name) {
-          currentPlayer.damage = parseInt(
-            line.split(":")[1].trim().replace(/,/g, "")
-          );
-        } else if (line.includes("Healing:") && currentPlayer.name) {
-          currentPlayer.healing = parseInt(
-            line.split(":")[1].trim().replace(/,/g, "")
-          );
         }
-      }
 
-      if (currentPlayer.name) {
-        players.push(currentPlayer as PlayerData);
+        if (currentPlayer.name) {
+          players.push(currentPlayer as PlayerData);
+        }
+
+        return {
+          startDate: dateMatch[1],
+          endDate: dateMatch[2],
+          duration,
+          lootType,
+          totalLoot,
+          totalSupplies,
+          totalBalance,
+          players,
+        };
+      } catch (error) {
+        console.error("Error parsing single session:", error);
+        return null;
       }
+    };
+
+    try {
+      const blocks = text.split(/(?=Session data:)/g).map((b) => b.trim()).filter(Boolean);
+
+      if (blocks.length === 0) return null;
+
+      if (blocks.length === 1) return parseSingle(blocks[0]);
+
+      const parsedBlocks = blocks.map(parseSingle).filter(Boolean) as SessionData[];
+      if (parsedBlocks.length === 0) return null;
+
+      // Aggregate totals and players
+      const aggPlayersMap = new Map<string, PlayerData>();
+      let totalLoot = 0;
+      let totalSupplies = 0;
+      let totalBalance = 0;
+      let earliestStart: Date | null = null;
+      let latestEnd: Date | null = null;
+      let totalMinutes = 0;
+      const lootTypes = new Set<string>();
+
+      parsedBlocks.forEach((pb) => {
+        totalLoot += pb.totalLoot;
+        totalSupplies += pb.totalSupplies;
+        totalBalance += pb.totalBalance;
+        lootTypes.add(pb.lootType);
+
+        const s = new Date(pb.startDate.replace(', ', 'T'));
+        const e = new Date(pb.endDate.replace(', ', 'T'));
+        if (!earliestStart || s < earliestStart) earliestStart = s;
+        if (!latestEnd || e > latestEnd) latestEnd = e;
+
+        // sum duration in minutes
+        const m = (pb.duration.match(/(\d{1,2}):(\d{2})/) || []).slice(1).map(Number);
+        if (m.length === 2) {
+          totalMinutes += m[0] * 60 + m[1];
+        }
+
+        pb.players.forEach((p) => {
+          const existing = aggPlayersMap.get(p.name);
+          if (existing) {
+            existing.loot += p.loot;
+            existing.supplies += p.supplies;
+            existing.balance += p.balance;
+            existing.damage += p.damage;
+            existing.healing += p.healing;
+            existing.isLeader = existing.isLeader || p.isLeader;
+          } else {
+            aggPlayersMap.set(p.name, { ...p });
+          }
+        });
+      });
+
+      const aggPlayers = Array.from(aggPlayersMap.values());
+
+      const hours = Math.floor(totalMinutes / 60)
+        .toString()
+        .padStart(2, "0");
+      const minutes = (totalMinutes % 60).toString().padStart(2, "0");
+      const durationStr = `${hours}:${minutes}h`;
+
+      const lootType =
+        lootTypes.size === 1
+          ? (Array.from(lootTypes)[0] as "Leader" | "Market" | "Split")
+          : "Split";
 
       return {
-        startDate: dateMatch[1],
-        endDate: dateMatch[2],
-        duration,
+        startDate: earliestStart ? earliestStart.toISOString().replace('T', ', ').split('.')[0] : parsedBlocks[0].startDate,
+        endDate: latestEnd ? latestEnd.toISOString().replace('T', ', ').split('.')[0] : parsedBlocks[parsedBlocks.length - 1].endDate,
+        duration: durationStr,
         lootType,
         totalLoot,
         totalSupplies,
         totalBalance,
-        players,
+        players: aggPlayers,
       };
     } catch (error) {
-      console.error("Error parsing session data:", error);
+      console.error("Error parsing multiple sessions:", error);
       return null;
     }
   }, []);
@@ -169,6 +252,32 @@ const HuntSessionAnalyzer: React.FC = () => {
       calculateTransfers(parsed);
     }
   }, [sessionText, parseSessionData]);
+
+  const handleAddSession = useCallback(() => {
+    if (!sessionText.trim()) return;
+    const parsed = parseSessionData(sessionText);
+    if (!parsed) return;
+    setAddedSessions((prev) => [...prev, parsed]);
+    setSessionText("");
+  }, [sessionText, parseSessionData]);
+
+  const handleRemoveAdded = (index: number) => {
+    setAddedSessions((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      setSelectedAddedIndex((sel) => {
+        if (sel === null) return null;
+        if (sel === index) return null;
+        if (sel > index) return sel - 1;
+        return sel;
+      });
+      return next;
+    });
+  };
+
+  const handleClearAdded = () => {
+    setAddedSessions([]);
+    setSelectedAddedIndex(null);
+  };
 
   const calculateTransfers = (session: SessionData) => {
     const transfers: Transfer[] = [];
@@ -238,6 +347,108 @@ const HuntSessionAnalyzer: React.FC = () => {
     0
   );
 
+  const aggregateSessions = (sessions: SessionData[]): SessionData | null => {
+    if (sessions.length === 0) return null;
+
+    const aggPlayersMap = new Map<string, PlayerData>();
+    let totalLoot = 0;
+    let totalSupplies = 0;
+    let totalBalance = 0;
+    let earliestStart: Date | null = null;
+    let latestEnd: Date | null = null;
+    let totalMinutes = 0;
+    const lootTypes = new Set<string>();
+
+    sessions.forEach((pb) => {
+      totalLoot += pb.totalLoot;
+      totalSupplies += pb.totalSupplies;
+      totalBalance += pb.totalBalance;
+      lootTypes.add(pb.lootType);
+
+      const s = new Date(pb.startDate.replace(", ", "T"));
+      const e = new Date(pb.endDate.replace(", ", "T"));
+      if (!earliestStart || s < earliestStart) earliestStart = s;
+      if (!latestEnd || e > latestEnd) latestEnd = e;
+
+      const m = (pb.duration.match(/(\d{1,2}):(\d{2})/) || []).slice(1).map(Number);
+      if (m.length === 2) {
+        totalMinutes += m[0] * 60 + m[1];
+      }
+
+      pb.players.forEach((p) => {
+        const existing = aggPlayersMap.get(p.name);
+        if (existing) {
+          existing.loot += p.loot;
+          existing.supplies += p.supplies;
+          existing.balance += p.balance;
+          existing.damage += p.damage;
+          existing.healing += p.healing;
+          existing.isLeader = existing.isLeader || p.isLeader;
+        } else {
+          aggPlayersMap.set(p.name, { ...p });
+        }
+      });
+    });
+
+    const aggPlayers = Array.from(aggPlayersMap.values());
+
+    const hours = Math.floor(totalMinutes / 60)
+      .toString()
+      .padStart(2, "0");
+    const minutes = (totalMinutes % 60).toString().padStart(2, "0");
+    const durationStr = `${hours}:${minutes}h`;
+
+    const lootType =
+      lootTypes.size === 1
+        ? (Array.from(lootTypes)[0] as "Leader" | "Market" | "Split")
+        : "Split";
+
+    const aggregated: SessionData = {
+      startDate: earliestStart ? earliestStart.toISOString().replace("T", ", ").split(".")[0] : sessions[0].startDate,
+      endDate: latestEnd ? latestEnd.toISOString().replace("T", ", ").split(".")[0] : sessions[sessions.length - 1].endDate,
+      duration: durationStr,
+      lootType,
+      totalLoot,
+      totalSupplies,
+      totalBalance,
+      players: aggPlayers,
+    };
+
+    return aggregated;
+  };
+
+  useEffect(() => {
+    const agg = aggregateSessions(addedSessions);
+    if (agg) {
+      setParsedSession(agg);
+      calculateTransfers(agg);
+    } else {
+      setParsedSession(null);
+      setTransfers([]);
+    }
+    if (selectedAddedIndex !== null && selectedAddedIndex >= addedSessions.length) {
+      setSelectedAddedIndex(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addedSessions]);
+
+  const selectAdded = (index: number) => {
+    const s = addedSessions[index];
+    if (!s) return;
+    setSelectedAddedIndex(index);
+    setParsedSession(s);
+    calculateTransfers(s);
+  };
+
+  const viewAggregated = () => {
+    const agg = aggregateSessions(addedSessions);
+    if (agg) {
+      setParsedSession(agg);
+      calculateTransfers(agg);
+    }
+    setSelectedAddedIndex(null);
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4">
       <div className="max-w-7xl mx-auto">
@@ -290,13 +501,60 @@ const HuntSessionAnalyzer: React.FC = () => {
                       />
                     </div>
 
-                    <button
-                      onClick={handleParseSession}
-                      disabled={!sessionText.trim()}
-                      className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-md font-medium transition-colors"
-                    >
-                      Paga ek de mierda
-                    </button>
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleParseSession}
+                          disabled={!sessionText.trim()}
+                          className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-md font-medium transition-colors"
+                        >
+                          Analizar sesiones
+                        </button>
+                        <button
+                          onClick={handleAddSession}
+                          disabled={!sessionText.trim()}
+                          className="px-3 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 rounded-md text-sm transition-colors"
+                        >
+                          Agregar a suma
+                        </button>
+                      </div>
+
+                      <div className="p-3 bg-gray-700 rounded-md">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-sm font-medium">Sesiones sumadas</div>
+                          <div className="text-xs text-gray-400">{addedSessions.length}</div>
+                        </div>
+
+                        {addedSessions.length === 0 ? (
+                          <div className="text-xs text-gray-400">Ninguna sesión añadida</div>
+                        ) : (
+                          <div className="space-y-2">
+                            {selectedAddedIndex !== null && (
+                              <div className="flex justify-end">
+                                <button onClick={viewAggregated} className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded">Ver suma</button>
+                              </div>
+                            )}
+
+                            {addedSessions.map((s, i) => (
+                              <div
+                                key={i}
+                                onClick={() => selectAdded(i)}
+                                className={`flex items-center justify-between p-2 rounded cursor-pointer transition-colors ${selectedAddedIndex === i ? 'bg-purple-700' : 'bg-gray-800 hover:bg-gray-700'}`}
+                              >
+                                <div className="text-xs text-gray-200">{formatDate(s.startDate)} • {s.players.length} players</div>
+                                <div className="flex items-center gap-2">
+                                  <button onClick={(e) => { e.stopPropagation(); handleRemoveAdded(i); }} className="text-xs px-2 py-1 bg-red-600 hover:bg-red-700 rounded">Eliminar</button>
+                                </div>
+                              </div>
+                            ))}
+
+                            <div className="flex justify-end">
+                              <button onClick={handleClearAdded} className="text-xs px-2 py-1 bg-gray-600 hover:bg-gray-500 rounded">Limpiar</button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-2">
